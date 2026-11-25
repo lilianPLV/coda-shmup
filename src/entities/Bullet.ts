@@ -1,3 +1,4 @@
+import GameConstants from "../GameConstants.ts";
 import {BulletData} from "../gameData/BulletData.ts";
 
 export default class Bullet extends Phaser.GameObjects.Rectangle {
@@ -51,10 +52,7 @@ export default class Bullet extends Phaser.GameObjects.Rectangle {
     update(timeSinceLaunch: number, deltaTime: number) {
         super.update(timeSinceLaunch, deltaTime);
 
-        // Bullets can now fly in any direction: recycle them when they leave the screen on any side
-        const camera = this.scene.cameras.main;
-        if (this.x < -this.displayWidth || this.x > camera.width + this.displayWidth
-            || this.y < -this.displayHeight || this.y > camera.height + this.displayHeight) {
+        if (this.x < -this.displayWidth || this.x > GameConstants.ARENA_WIDTH + GameConstants.ARENA_HEIGHT || this.y < -this.displayHeight || this.y > GameConstants.ARENA_HEIGHT + GameConstants.ARENA_HEIGHT) {
             this.disable();
         }
     }

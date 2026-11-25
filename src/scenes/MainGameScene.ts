@@ -1,4 +1,4 @@
-import {Scene, GameObjects} from 'phaser';
+import {Scene} from 'phaser';
 import Health from "../components/Health.ts";
 import RegistryConstants from "../RegistryConstants.ts";
 import SaveManager from "../managers/SaveManager.ts";
@@ -7,8 +7,6 @@ import EntityManager from "../managers/EntityManager.ts";
 import GameConstants from "../GameConstants.ts";
 
 export default class MainGameScene extends Scene {
-    private bg: GameObjects.TileSprite;
-    private planet: GameObjects.Image;
     private saveManager: SaveManager;
     private entityManager: EntityManager;
 
@@ -23,10 +21,11 @@ export default class MainGameScene extends Scene {
         }
         this.saveManager?.load();
 
-        const bgMargin = 512;
-        this.bg = this.add.tileSprite(this.cameras.main.centerX, this.cameras.main.centerY,
-            this.cameras.main.width + bgMargin, this.cameras.main.height + bgMargin, 'bg').setTileScale(2);
-        this.planet = this.add.image(0, -512, 'planet').setOrigin(0);
+        this.cameras.main.setBounds(0, 0, GameConstants.ARENA_WIDTH, GameConstants.ARENA_HEIGHT);
+
+        this.add.tileSprite(0, 0, GameConstants.ARENA_WIDTH, GameConstants.ARENA_HEIGHT, 'bg').setOrigin(0).setTileScale(2);
+
+        this.add.image(GameConstants.ARENA_WIDTH / 2, GameConstants.ARENA_HEIGHT / 2, 'planet').setScale(1.5);
 
         if (!this.entityManager) {
             console.error('EntityManager plugin not found');
@@ -38,6 +37,8 @@ export default class MainGameScene extends Scene {
             player.disableBody(true, true);
             this.time.delayedCall(1000, this.endGame, [], this);
         }, this);
+        this.cameras.main.startFollow(player, true, 0.1, 0.1);
+
         this.entityManager.initEnemies();
         this.entityManager.initGroupCollisions();
 
@@ -61,10 +62,5 @@ export default class MainGameScene extends Scene {
         }
 
         this.scene.start(GameConstants.SceneKeys.GAME_OVER);
-    }
-
-    update(_timeSinceLaunch: number, deltaTime: number) {
-        this.bg.tilePositionY -= 0.1 * deltaTime;
-        this.planet.y += 0.40 * deltaTime;
     }
 }

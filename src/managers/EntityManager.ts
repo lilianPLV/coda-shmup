@@ -25,6 +25,7 @@ export default class EntityManager extends Plugins.ScenePlugin {
     private _playerBullets: Physics.Arcade.Group;
     private _enemies: Physics.Arcade.Group;
     private _enemyBullets: Physics.Arcade.Group;
+    private readonly _spawnOffSet: Phaser.Math.Vector2 = new Phaser.Math.Vector2();
 
     constructor(scene: Scene, pluginManager: Plugins.PluginManager) {
         super(scene, pluginManager, EntityManager.PLUGIN_KEY);
@@ -42,7 +43,7 @@ export default class EntityManager extends Plugins.ScenePlugin {
         this._playerBullets = this.scene!.physics.add.group(this.bulletGroupConfig);
         GroupUtils.populate(64, this._playerBullets);
 
-        this._player = new Player(this.scene!, this.scene!.cameras.main.centerX, this.scene!.cameras.main.height - 128);
+        this._player = new Player(this.scene!, GameConstants.ARENA_WIDTH / 2, GameConstants.ARENA_HEIGHT / 2);
         this._player.init(this._playerBullets);
 
         console.log("[EntityManager] Player spawned");
@@ -61,16 +62,18 @@ export default class EntityManager extends Plugins.ScenePlugin {
             defaultKey: 'sprites',
             defaultFrame: 'ufoRed',
             createCallback: (enemy) => {
-                (enemy as Enemy).init(this._enemyBullets);
+                (enemy as Enemy).init(this._enemyBullets, this._player);
             }
         });
 
+        this._player.setTargets(this._enemies);
+        
         // Spawn enemies indefinitely
         this.scene!.time.addEvent({
-            delay: 1500,
+            delay: 500,
             callback: this.spawnEnemy,
             callbackScope: this,
-            loop: true
+            loop: true,
         });
 
         console.log("[EntityManager] Enemies initialized");
@@ -79,6 +82,7 @@ export default class EntityManager extends Plugins.ScenePlugin {
     }
 
     public initGroupCollisions() {
+        this.scene!.physics.add.collider(this._enemies, this._enemies);
         this.scene!.physics.add.overlap(this._playerBullets, this._enemies, (bullet, enemy) => {
             this.scene!.registry.inc(RegistryConstants.Keys.PLAYER_SCORE);
 
@@ -109,7 +113,7 @@ export default class EntityManager extends Plugins.ScenePlugin {
     }
 
     private spawnEnemy() {
-        if (this._enemies.countActive(true) >= 5) {
+        if (this._enemies.countActive(true) >= 50) {
             return;
         }
 
@@ -118,7 +122,10 @@ export default class EntityManager extends Plugins.ScenePlugin {
             return;
         }
 
-        enemy.enable(Phaser.Math.Between(64, this.scene!.cameras.main.width - 64), 0);
+        const view = this.scene!.cameras.main.worldView;
+        const spawnRadius = Phaser.Math.Distance.Between(view.centerX, view.centerY, view.right, view.top) + 128;
+        Phaser.Math.RandomXY(this._spawnOffSet, spawnRadius);
+        enemy.enable(view.centerX + this._spawnOffSet.x, view.centerY + this._spawnOffSet.y);
 
         this.game!.events.emit(GameConstants.Events.ENEMY_SPAWNED_EVENT, enemy);
 

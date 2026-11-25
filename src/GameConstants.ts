@@ -12,4 +12,10 @@ export default class GameConstants {
     } as const);
 
     public static readonly MAX_SCORE_DIGITS: number = 6;
+
+
+    // Small anough for the planet, at the center, to stay visible from the arena corners
+    public static readonly ARENA_WIDTH: number = 3400;
+    public static readonly ARENA_HEIGHT: number = 4700;
+    
 }

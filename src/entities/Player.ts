@@ -5,6 +5,7 @@ import Entity from './Entity.ts';
 import Health from "../components/Health.ts";
 import Movement from "../components/Movement.ts";
 import Weapon from "../components/Weapon.ts";
+import GameConstants from "../GameConstants.ts";
 
 export default class Player extends Entity {
     private readonly _bulletData: BulletData = {
@@ -19,6 +20,9 @@ export default class Player extends Entity {
     private _playerShipData: PlayerShipData;
     private _rateOfFire: number;
     private _lastShotTime: number;
+    private readonly _moveDirection: Phaser.Math.Vector2 = new Phaser.Math.Vector2();
+    private readonly _shootDirection: Phaser.Math.Vector2 = new Phaser.Math.Vector2();
+    private _targets: Phaser.Physics.Arcade.Group;
 
     constructor(scene: Scene, x: number, y: number) {
         super(scene, x, y, 'sprites');
@@ -70,30 +74,48 @@ export default class Player extends Entity {
         super.preUpdate(timeSinceLaunch, deltaTime);
 
         // Press left or right arrow keys to move the player smoothly horizontally using deltaTime
-        if (this._cursorKeys.left.isDown) {
-            if (this._cursorKeys.shift.isDown) {
-                this.angle -= this._playerShipData.movementSpeed * deltaTime;
-            } else {
-                this.getComponent(Movement)?.moveHorizontally(this, -deltaTime);
-            }
-        } else if (this._cursorKeys.right.isDown) {
-            if (this._cursorKeys.shift.isDown) {
-                this.angle += this._playerShipData.movementSpeed * deltaTime;
-            } else {
-                this.getComponent(Movement)?.moveHorizontally(this, deltaTime);
-            }
+        this._moveDirection.set(0, 0);
+        if (this._cursorKeys.left.isDown)
+            this._moveDirection.x -= 1;
+        if (this._cursorKeys.right.isDown)
+            this._moveDirection.x += 1;
+        if (this._cursorKeys.up.isDown)
+            this._moveDirection.y -= 1;
+        if (this._cursorKeys.down.isDown)
+            this._moveDirection.y += 1;
+                
+        if (this._moveDirection.lengthSq() >0) {
+            this._moveDirection.normalize();
+            this.getComponent(Movement)?.move(this, this._moveDirection, deltaTime);
+
+            // Face the move direction
+            this.rotation = this._moveDirection.angle();
         }
+
         // Stop player from going offscreen
-        this.x = Phaser.Math.Clamp(this.x, this.displayWidth / 2, this.scene.cameras.main.width - this.displayWidth / 2);
+        const camera = this.scene.cameras.main;
+        this.x = Phaser.Math.Clamp(this.x, this.displayWidth / 2, GameConstants.ARENA_WIDTH -this.displayWidth / 2);
+        this.y = Phaser.Math.Clamp(this.y, this.displayWidth / 2, GameConstants.ARENA_HEIGHT -this.displayHeight / 2);
 
         // Press space to shoot
-        if (this._cursorKeys.space.isDown) {
-            if (timeSinceLaunch - this._lastShotTime > this._rateOfFire * 1000) {
-                this.getComponent(Weapon)?.shoot(this);
+        if (timeSinceLaunch -this._lastShotTime > this._rateOfFire * 1000) {
+            const nearestTarget = this.findNearestTarget();
+            if (nearestTarget) {
+                this._shootDirection.set(nearestTarget.x - this.x, nearestTarget.y - this.y).normalize();
+                this.getComponent(Weapon)?.shoot(this, this._shootDirection);
                 this.scene.sound.play('sfx_laser1');
-
                 this._lastShotTime = timeSinceLaunch;
             }
+        
         }
     }
+
+    public setTargets(targets: Phaser.Physics.Arcade.Group) {
+        this._targets = targets;
+    }
+
+    public findNearestTarget(): Entity | null {
+        return this.scene.physics.closest(this, this._targets.getMatching('active', true)) as Entity | null;
+    }
 }
+

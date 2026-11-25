@@ -19,7 +19,7 @@ export default class Weapon implements IComponent {
         this._bulletData = bulletData;
     }
 
-    public shoot(source: Entity) {
+    public shoot(source: Entity, direction?: Phaser.Math.Vector2) {
         if (!this.enabled)
             return;
 
@@ -29,7 +29,7 @@ export default class Weapon implements IComponent {
         const bullet: Bullet = this._bullets.get() as Bullet;
         if (bullet) {
             // Get forward vector of the source entity
-            const sourceForward: Phaser.Math.Vector2 = new Phaser.Math.Vector2(1, 0).rotate(source.rotation);
+            const sourceForward: Phaser.Math.Vector2 = direction ?? new Phaser.Math.Vector2(1, 0).rotate(source.rotation);
             const bulletVelocity: Phaser.Math.Vector2 = sourceForward.clone().scale(this._bulletData.speed);
             bullet.enable(source.x + sourceForward.x * source.arcadeBody.radius, source.y + sourceForward.y * source.arcadeBody.radius,
                 bulletVelocity.x, bulletVelocity.y, this._bulletData);

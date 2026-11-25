@@ -29,4 +29,12 @@ export default class Movement implements IComponent {
 
         entity.y += this._speed * deltaTime;
     }
+
+    public move(entity: Entity, direction: Phaser.Math.Vector2, deltaTime: number) {
+        if (!this.enabled)
+            return;
+
+        entity.x += direction.x * this._speed * deltaTime;
+        entity.y += direction.y * this._speed * deltaTime;
+    }
 }
