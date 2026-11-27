@@ -1,0 +1,26 @@
+{
+  "health": 5,
+  "scale": 2,
+  "tint": "#b388ff",
+  "spawn": {
+    "delay": 10000,
+    "interval": 25000
+  },
+  "movement": {
+    "speed": 0.06,
+    "amplitude": 360,
+    "frequency": 0.0012
+  },
+  "attack": {
+    "delay": 1500,
+    "bulletCount": 7,
+    "spreadAngle": 60,
+    "bullet": {
+      "width": 20,
+      "height": 20,
+      "color": "#b388ff",
+      "speed": 450,
+      "damage": 1
+    }
+  }
+}

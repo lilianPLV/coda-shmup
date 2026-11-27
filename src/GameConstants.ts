@@ -12,4 +12,7 @@ export default class GameConstants {
     } as const);
 
     public static readonly MAX_SCORE_DIGITS: number = 6;
+
+    public static readonly BOSS_FIRST_SCORE: number = 1;
+    public static readonly BOSS_SCORE_INTERVAL: number = 40;
 }
