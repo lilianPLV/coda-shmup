@@ -1,6 +1,8 @@
 import {GameObjects, Plugins, Physics, Scene} from "phaser";
 import Health from "../components/Health.ts";
+import Boss from "../entities/Boss.ts"
 import Bullet from "../entities/Bullet.ts";
+import type {BossData} from "../gameData/BossData.ts";
 import Enemy from "../entities/Enemy.ts";
 import Player from "../entities/Player.ts";
 import GroupUtils from "../utils/GroupUtils.ts";
@@ -25,6 +27,10 @@ export default class EntityManager extends Plugins.ScenePlugin {
     private _playerBullets: Physics.Arcade.Group;
     private _enemies: Physics.Arcade.Group;
     private _enemyBullets: Physics.Arcade.Group;
+    private _bosses: Physics.Arcade.Group;
+    private _boss?: Boss;
+    private _bossConfig: BossData;
+    private _lastBossContactTime: number = 0;
 
     constructor(scene: Scene, pluginManager: Plugins.PluginManager) {
         super(scene, pluginManager, EntityManager.PLUGIN_KEY);
@@ -64,6 +70,18 @@ export default class EntityManager extends Plugins.ScenePlugin {
                 (enemy as Enemy).init(this._enemyBullets);
             }
         });
+
+        // The plugin instance survives scene restarts: reset the boss state every time
+        this._boss = undefined;
+        this._lastBossContactTime = 0;
+        this._bosses = this.scene!.physics.add.group();
+
+        this._bossConfig = this.scene!.cache.json.get('boss') as BossData;
+        if (this._bossConfig) {
+            this.scheduleBoss(this._bossConfig.spawn.delay);
+        } else {
+            console.error("[EntityManager] 'boss' JSON is not loaded: no boss will spawn");
+        }
 
         // Spawn enemies indefinitely
         this.scene!.time.addEvent({
@@ -105,10 +123,33 @@ export default class EntityManager extends Plugins.ScenePlugin {
             this.scene?.cameras.main.shake(100, 0.03);
         });
 
+        this.scene!.physics.add.overlap(this._playerBullets, this._bosses, (bullet, boss) => {
+            this.scene!.registry.inc(RegistryConstants.Keys.PLAYER_SCORE);
+
+            (bullet as Bullet).disable();
+            (boss as Boss).getComponent(Health)?.damage((bullet as Bullet).damage);
+        });
+
+        this.scene!.physics.add.overlap(this._player, this._bosses, (player) => {
+            // The boss doesn't die on contact, so limit the damage taken to once per second
+            if (this.scene!.time.now - this._lastBossContactTime < 1000)
+                return;
+            this._lastBossContactTime = this.scene!.time.now;
+
+            (player as Player).getComponent(Health)?.damage(1);
+
+            this.scene?.cameras.main.shake(100, 0.03);
+        });
+
         console.log("[EntityManager] Group collisions initialized");
     }
 
     private spawnEnemy() {
+        // A boss is alive: no more regular enemies until it is defeated
+        if (this._boss) {
+            return;
+        }
+
         if (this._enemies.countActive(true) >= 5) {
             return;
         }
@@ -123,5 +164,33 @@ export default class EntityManager extends Plugins.ScenePlugin {
         this.game!.events.emit(GameConstants.Events.ENEMY_SPAWNED_EVENT, enemy);
 
         console.log("[EntityManager] Enemy spawned");
+    }
+
+    private scheduleBoss(delay: number) {
+        this.scene!.time.delayedCall(delay, () => this.spawnBoss());
+    }
+
+    private spawnBoss() {
+        if (this._boss) {
+            return;
+        }
+
+        const boss = new Boss(this.scene!, this.scene!.cameras.main.centerX, -256);
+        boss.init(this._enemyBullets, this._bossConfig);
+        this._bosses.add(boss);
+        this._boss = boss;
+
+        // Fired when the boss is killed AND when it leaves the screen
+        boss.once(GameObjects.Events.DESTROY, (_boss: Boss, fromScene: boolean) => {
+            // The scene is shutting down (restart, game over): nothing to schedule
+            if (fromScene)
+                return;
+
+            // Regular enemies spawn again, and the next boss is scheduled
+            this._boss = undefined;
+            this.scheduleBoss(this._bossConfig.spawn.interval);
+        });
+
+        console.log("[EntityManager] Boss spawned");
     }
 }

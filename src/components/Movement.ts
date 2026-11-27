@@ -5,6 +5,7 @@ export default class Movement implements IComponent {
     public enabled: boolean = true;
 
     private _speed: number = 0;
+    private _elapsed: number = 0;
 
     public constructor(speed?: number) {
         if (speed) {
@@ -28,5 +29,13 @@ export default class Movement implements IComponent {
             return;
 
         entity.y += this._speed * deltaTime;
+    }
+
+    public moveSinusoidally(entity: Entity, originX: number, amplitude: number, frequency: number, deltaTime: number) {
+        if (!this.enabled)
+            return;
+
+        this._elapsed += deltaTime;
+        entity.x = originX + amplitude * Math.sin(this._elapsed * frequency);
     }
 }

@@ -23,24 +23,43 @@ export default class Weapon implements IComponent {
         if (!this.enabled)
             return;
 
+        this.fire(source, source.rotation);
+    }
+
+    // Fires bulletCount bullets at once, spread over spreadAngle degrees and centered on the forward direction of the source.
+    // e.g. (3, 30) = 3 bullets in a 30° cone, (60, 360) = 60 bullets in a full circle
+    public shootSpread(source: Entity, bulletCount: number, spreadAngle: number) {
+        if (!this.enabled)
+            return;
+
+        if (bulletCount <= 1) {
+            this.fire(source, source.rotation);
+            return;
+        }
+
+        // In a full circle, -180° and +180° are the same direction: don't fire twice in it
+        const isFullCircle: boolean = spreadAngle >= 360;
+        const step: number = isFullCircle ? 360 / bulletCount : spreadAngle / (bulletCount - 1);
+        const start: number = isFullCircle ? 0 : -spreadAngle / 2;
+
+        for (let i: number = 0; i < bulletCount; i++) {
+            this.fire(source, source.rotation + Phaser.Math.DegToRad(start + i * step));
+        }
+    }
+
+    // angle in radians (0 = right, like entity.rotation)
+    private fire(source: Entity, angle: number) {
         if (!this._bullets)
             return;
 
+        // null when the pool is exhausted: the bullet is simply skipped
         const bullet: Bullet = this._bullets.get() as Bullet;
         if (bullet) {
-            // Get forward vector of the source entity
-            const sourceForward: Phaser.Math.Vector2 = new Phaser.Math.Vector2(1, 0).rotate(source.rotation);
-            const bulletVelocity: Phaser.Math.Vector2 = sourceForward.clone().scale(this._bulletData.speed);
-            bullet.enable(source.x + sourceForward.x * source.arcadeBody.radius, source.y + sourceForward.y * source.arcadeBody.radius,
+            // Get forward vector for this angle
+            const forward: Phaser.Math.Vector2 = new Phaser.Math.Vector2(1, 0).rotate(angle);
+            const bulletVelocity: Phaser.Math.Vector2 = forward.clone().scale(this._bulletData.speed);
+            bullet.enable(source.x + forward.x * source.arcadeBody.radius, source.y + forward.y * source.arcadeBody.radius,
                 bulletVelocity.x, bulletVelocity.y, this._bulletData);
-
-            // Maths way
-            // const forwardVectorX: number = Math.cos(source.rotation);
-            // const forwardVectorY: number = Math.sin(source.rotation);
-            // const bulletVelocityX: number = forwardVectorX * this._bulletData.speed;
-            // const bulletVelocityY: number = forwardVectorY * this._bulletData.speed;
-            // bullet.enable(source.x + forwardVectorX * source.arcadeBody.radius, source.y + forwardVectorY * source.arcadeBody.radius,
-            //     bulletVelocityX, bulletVelocityY, this._bulletData);
         }
     }
 }
